@@ -1,0 +1,28 @@
+#Generer une cle privee avec openssl
+openssl genpkey -algorithm RSA -out private.key -pkeyopt rsa_keygen_bits:2048
+
+#Generer une csr
+openssl req -new -key private.key -out csr.pem
+
+
+#Signer la csr 
+openssl genpkey -algorithm RSA -out ca.key -pkeyopt rsa_keygen_bits:2048
+
+openssl req -x509 -new -nodes -key ca.key -out ca.crt -subj "/CN=minikubeCA" -days 365
+
+openssl x509 -req -in csr.pem -CA ca.crt -CAkey ca.key -CAcreateserial -out sun.cert -days 365
+
+
+#creation du fichier Kubeconfig
+kubectl config set-cluster minikube --embed-certs=true --server=https://<minikube-ip>:<port> --certificate-authority=ca.crt --kubeconfig=new-user.kubeconfig
+kubectl config set-credentials sun --client-certificate=sun.cert --client-key=private.key --kubeconfig=new-user.kubeconfig
+kubectl config set-context sun-context --cluster=minikube --user=sun --kubeconfig=new-user.kubeconfig
+kubectl config use-context sun-context --kubeconfig=new-user.kubeconfig
+
+#Dans la première commande, remplacez <minikube-ip> et <port> par l'adresse IP et le port de votre cluster Minikube respectivement.
+
+#Configuration du rbac
+kubectl apply -f roles.yaml
+
+#Lien utile
+https://lisowski0925.medium.com/using-kubernetes-csrs-and-rbac-for-cluster-user-authentication-and-authorization-9df5498655cd
